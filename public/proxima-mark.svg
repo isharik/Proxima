@@ -1,0 +1,11 @@
+<svg width="400" height="400" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" fill="#0d0f14"/>
+  <g stroke="#F5B301" stroke-width="15" stroke-linecap="round" fill="none">
+    <!-- bowl / hook -->
+    <path d="M47 67 C 31 61 27 41 41 29 C 57 17 85 21 91 43 C 95 61 79 73 63 67" />
+    <!-- stem -->
+    <path d="M45 64 L 36 99" />
+  </g>
+  <!-- dot -->
+  <circle cx="59" cy="47" r="8" fill="#F5B301"/>
+</svg>
