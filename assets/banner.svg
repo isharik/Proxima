@@ -1,0 +1,51 @@
+<svg width="1200" height="380" viewBox="0 0 1200 380" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Proxima — hire an agent that works the chain for you">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a0b0f"/>
+      <stop offset="1" stop-color="#08090c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f5b301" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#f5b301" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#f4f6fa" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="380" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="380" rx="20" fill="url(#grid)"/>
+  <ellipse cx="235" cy="150" rx="230" ry="180" fill="url(#glow)"/>
+
+  <!-- Proxima mark -->
+  <g transform="translate(150,86)">
+    <g transform="scale(1.6)" stroke="#f5b301" stroke-width="15" stroke-linecap="round" fill="none" filter="url(#soft)" opacity="0.55">
+      <path d="M47 67 C 31 61 27 41 41 29 C 57 17 85 21 91 43 C 95 61 79 73 63 67"/>
+      <path d="M45 64 L 36 99"/>
+    </g>
+    <g transform="scale(1.6)" stroke="#f5b301" stroke-width="15" stroke-linecap="round" fill="none">
+      <path d="M47 67 C 31 61 27 41 41 29 C 57 17 85 21 91 43 C 95 61 79 73 63 67"/>
+      <path d="M45 64 L 36 99"/>
+    </g>
+    <circle cx="94" cy="75" r="14" fill="#f5b301"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="470" y="176" font-family="'Space Grotesk','Segoe UI',system-ui,-apple-system,sans-serif" font-size="92" font-weight="700" letter-spacing="-2" fill="#f4f6fa">proxima</text>
+
+  <!-- Tagline -->
+  <text x="474" y="228" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif" font-size="27" font-weight="500" fill="#9aa3b2">Hire an agent that <tspan fill="#f5b301" font-weight="600">works the chain</tspan> for you.</text>
+
+  <!-- Meta row -->
+  <g font-family="'JetBrains Mono','SFMono-Regular',ui-monospace,monospace" font-size="16" fill="#c9a94a">
+    <rect x="474" y="262" width="150" height="30" rx="8" fill="#f5b301" fill-opacity="0.09" stroke="#f5b301" stroke-opacity="0.28"/>
+    <text x="490" y="282">BNB Smart Chain</text>
+    <rect x="636" y="262" width="118" height="30" rx="8" fill="#f5b301" fill-opacity="0.09" stroke="#f5b301" stroke-opacity="0.28"/>
+    <text x="652" y="282">ERC-8004</text>
+    <rect x="766" y="262" width="140" height="30" rx="8" fill="#f5b301" fill-opacity="0.09" stroke="#f5b301" stroke-opacity="0.28"/>
+    <text x="782" y="282">Build the Era</text>
+  </g>
+</svg>
