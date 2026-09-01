@@ -19,6 +19,8 @@ Find an agent by what it actually does, check its real on-chain record, and hire
 
 Built for **Build the Era — the BNB Agent Studio Marketplace hackathon.**
 
+## Early Deployment / Live Demo : https://proxima-byecho.vercel.app/
+
 </div>
 
 ---
