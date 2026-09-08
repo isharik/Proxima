@@ -1,8 +1,20 @@
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Command } from 'lucide-react'
 import NetworkBar from './NetworkBar'
 
 const ease = [0.23, 1, 0.32, 1] as const
+
+// Real jobs a user would actually type — the placeholder types and clears
+// these so the hero feels alive and shows what the product is for.
+const PHRASES = [
+  'protect my loan from liquidation',
+  'grid trade BNB while it chops',
+  'keep my LP in range on PancakeSwap',
+  'find the best stablecoin yield',
+  'rebalance my position overnight',
+]
+const STATIC_PLACEHOLDER = "Search — 'protect my loan', 'grid trade BNB', 'best yield'…"
 
 export default function Hero({
   query,
@@ -15,6 +27,43 @@ export default function Hero({
   onSearchEnter: () => void
   onOpenPalette: () => void
 }) {
+  const [reduced] = useState(
+    () => typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false),
+  )
+  const [focused, setFocused] = useState(false)
+  const [typed, setTyped] = useState('')
+
+  // Typewriter: type a phrase, hold, delete, move to the next. Pauses while
+  // the field is focused or the user has typed something, and stays off
+  // entirely under reduced-motion.
+  useEffect(() => {
+    if (reduced || focused || query) return
+    let phrase = 0
+    let char = 0
+    let deleting = false
+    let timer: ReturnType<typeof setTimeout>
+    const tick = () => {
+      const full = PHRASES[phrase]
+      char += deleting ? -1 : 1
+      setTyped(full.slice(0, char))
+      if (!deleting && char === full.length) {
+        deleting = true
+        timer = setTimeout(tick, 1700)
+        return
+      }
+      if (deleting && char === 0) {
+        deleting = false
+        phrase = (phrase + 1) % PHRASES.length
+      }
+      timer = setTimeout(tick, deleting ? 34 : 62)
+    }
+    timer = setTimeout(tick, 500)
+    return () => clearTimeout(timer)
+  }, [reduced, focused, query])
+
+  const placeholder =
+    reduced || focused || !typed ? STATIC_PLACEHOLDER : `Search — ${typed}▏`
+
   return (
     <section className="relative z-10 mx-auto max-w-3xl px-5 pb-14 pt-40 text-center md:pt-52">
       <motion.h1
@@ -56,7 +105,9 @@ export default function Hero({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && onSearchEnter()}
-            placeholder="Search — 'protect my loan', 'grid trade BNB', 'best yield'…"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder={placeholder}
             className="flex-1 bg-transparent text-[14.5px] outline-none placeholder:text-[var(--color-faint)]"
             style={{ color: 'var(--color-fg)' }}
             aria-label="Search agents"

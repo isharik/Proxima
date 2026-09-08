@@ -142,7 +142,26 @@ export default function KineticGrid() {
       const warpScale = reduced ? 0.4 : 1
 
       ctx.clearRect(0, 0, W, H)
-      ctx.fillStyle = BG
+      // Base wash: a cool blue drifting into a warm amber-orange across the
+      // diagonal, kept dark so content stays readable. This is the colour
+      // that sits *behind* the mesh.
+      const base = ctx.createLinearGradient(0, 0, W, H)
+      base.addColorStop(0, '#0b1524') // cool blue-black, top-left
+      base.addColorStop(0.42, BG)
+      base.addColorStop(0.6, BG)
+      base.addColorStop(1, '#180f06') // warm orange-black, bottom-right
+      ctx.fillStyle = base
+      ctx.fillRect(0, 0, W, H)
+      // Soft corner glows for depth — blue up top, amber down low.
+      const blue = ctx.createRadialGradient(W * 0.16, H * 0.08, 0, W * 0.16, H * 0.08, Math.max(W, H) * 0.55)
+      blue.addColorStop(0, 'rgba(52,110,210,0.10)')
+      blue.addColorStop(1, 'rgba(52,110,210,0)')
+      ctx.fillStyle = blue
+      ctx.fillRect(0, 0, W, H)
+      const amber = ctx.createRadialGradient(W * 0.84, H * 0.96, 0, W * 0.84, H * 0.96, Math.max(W, H) * 0.6)
+      amber.addColorStop(0, 'rgba(245,179,1,0.09)')
+      amber.addColorStop(1, 'rgba(245,179,1,0)')
+      ctx.fillStyle = amber
       ctx.fillRect(0, 0, W, H)
 
       // static dot texture with a faint travelling shimmer
@@ -318,7 +337,7 @@ export default function KineticGrid() {
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(130% 90% at 50% 0%, transparent 30%, rgba(8,9,12,0.5) 78%, rgba(8,9,12,0.78) 100%)',
+            'radial-gradient(135% 95% at 50% 0%, transparent 40%, rgba(8,9,12,0.32) 80%, rgba(8,9,12,0.55) 100%)',
         }}
       />
     </div>

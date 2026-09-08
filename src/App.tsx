@@ -14,19 +14,35 @@ import CompareTray from './components/CompareTray'
 import RealAgentCard from './components/RealAgentCard'
 import RealAgentDrawer from './components/RealAgentDrawer'
 import AgentCardSkeletonReal from './components/AgentCardSkeleton'
-import { useOnchainAgents, fetchScanAgentsByCategory, type OnchainAgent, type LiveCategory } from './lib/onchainAgents'
+import {
+  useOnchainAgents,
+  fetchScanAgentsByCategory,
+  filterAgentsByCategory,
+  sortLiveAgents,
+  type OnchainAgent,
+  type LiveCategory,
+  type LiveSort,
+} from './lib/onchainAgents'
 import { HowItWorks, ClosingCTA, Footer } from './components/Sections'
 import { CATEGORIES, type Agent, type Category } from './data/agents'
 import { useAgents } from './lib/agentsSource'
 import { useWallet } from './lib/wallet'
 
 type Filter = 'all' | Category
-type Sort = 'reputation' | 'hires' | 'price'
+type Sort = 'reputation' | 'hires' | 'price' | 'reviews' | 'verified'
 
-const SORTS: { id: Sort; label: string }[] = [
+// The reference set has invented per-session prices and hire counts.
+// The live registry doesn't — so live agents sort by the real on-chain
+// dimensions we actually have (reputation, review count, verification).
+const REF_SORTS: { id: Sort; label: string }[] = [
   { id: 'reputation', label: 'Reputation' },
   { id: 'hires', label: 'Most hired' },
   { id: 'price', label: 'Lowest price' },
+]
+const LIVE_SORTS: { id: Sort; label: string }[] = [
+  { id: 'reputation', label: 'Reputation' },
+  { id: 'reviews', label: 'Most reviewed' },
+  { id: 'verified', label: 'Verified first' },
 ]
 
 const ease = [0.23, 1, 0.32, 1] as const
@@ -123,21 +139,31 @@ export default function App() {
     }
     let alive = true
     setCatLoading(true)
-    fetchScanAgentsByCategory(filter as Exclude<LiveCategory, 'other'>)
-      .then((a) => alive && setCatAgents(a))
-      .catch(() => alive && setCatAgents([]))
-      .finally(() => alive && setCatLoading(false))
+    const cat = filter as Exclude<LiveCategory, 'other'>
+    ;(async () => {
+      // Prefer 8004scan semantic search. When it's unavailable (the Free
+      // tier throws transient DB errors), fall back to the agents already
+      // loaded for "All", filtered to this category — so the tab is never
+      // empty when relevant agents exist.
+      let list = await fetchScanAgentsByCategory(cat).catch(() => [] as OnchainAgent[])
+      if (list.length === 0) list = filterAgentsByCategory(onchain.agents, cat)
+      if (alive) {
+        setCatAgents(list)
+        setCatLoading(false)
+      }
+    })()
     return () => {
       alive = false
     }
-  }, [dataMode, filter])
+  }, [dataMode, filter, onchain.agents])
 
   const filteredReal = useMemo(() => {
     const q = query.trim().toLowerCase()
     let list = filter === 'all' ? onchain.agents : catAgents
     if (q) list = list.filter((a) => `${a.name} ${a.description} ${a.category} ${a.owner}`.toLowerCase().includes(q))
-    return list
-  }, [onchain.agents, catAgents, filter, query])
+    const liveSort: LiveSort = sort === 'reviews' || sort === 'verified' ? sort : 'reputation'
+    return sortLiveAgents(list, liveSort)
+  }, [onchain.agents, catAgents, filter, query, sort])
 
   const counts = useMemo(() => {
     if (dataMode === 'live') {
@@ -225,6 +251,7 @@ export default function App() {
                   onClick={() => {
                     setDataMode(m.id)
                     setFilter('all')
+                    setSort('reputation')
                   }}
                   className="pressable rounded-md px-3 py-1.5 text-[12px] font-500"
                   style={{
@@ -256,7 +283,7 @@ export default function App() {
               ))}
               <div className="ml-auto flex items-center gap-1.5 pr-1">
                 <span className="hidden text-[12px] sm:inline" style={{ color: 'var(--color-faint)' }}>Sort</span>
-                {SORTS.map((s) => (
+                {(dataMode === 'live' ? LIVE_SORTS : REF_SORTS).map((s) => (
                   <button
                     key={s.id}
                     onClick={() => setSort(s.id)}

@@ -357,6 +357,50 @@ function relTime(d: Date): string {
   return `${Math.round(h / 24)}d ago`
 }
 
+// The 8004scan Free tier is flaky — transient 500s (DATABASE_ERROR) and
+// the occasional empty items[]. Retry a couple of times with a short
+// backoff before giving up so one bad response doesn't blank the UI.
+async function getJson(url: string, tries = 3): Promise<{ items?: ScanItem[] } | null> {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url)
+      if (r.ok) {
+        const j = (await r.json()) as { success?: boolean; items?: ScanItem[] }
+        if (j && j.success !== false && Array.isArray(j.items)) return j
+      }
+    } catch {
+      /* retry */
+    }
+    if (i < tries - 1) await new Promise((res) => setTimeout(res, 350 * (i + 1)))
+  }
+  return null
+}
+
+// Filter an already-loaded live list down to one category — the fallback
+// when 8004scan's semantic search is unavailable. Every agent already
+// carries its classified category, so this is an honest keyword match, not
+// a fabricated grouping.
+export function filterAgentsByCategory(list: OnchainAgent[], cat: Exclude<LiveCategory, 'other'>): OnchainAgent[] {
+  const direct = list.filter((a) => a.category === cat)
+  if (direct.length >= 4) return direct
+  const re = RULES.find((r) => r.cat === cat)?.re
+  if (!re) return direct
+  const seen = new Set(direct.map((a) => a.id))
+  const extra = list.filter((a) => !seen.has(a.id) && re.test(`${a.name} ${a.description}`))
+  return [...direct, ...extra]
+}
+
+// Sort a live list by one of the real on-chain dimensions we actually have.
+export type LiveSort = 'reputation' | 'reviews' | 'verified'
+export function sortLiveAgents(list: OnchainAgent[], sort: LiveSort): OnchainAgent[] {
+  const rep = (a: OnchainAgent) => a.trustScore + (a.feedbacks ? 0.5 : 0)
+  return [...list].sort((a, b) => {
+    if (sort === 'reviews') return (b.feedbacks ?? 0) - (a.feedbacks ?? 0) || rep(b) - rep(a)
+    if (sort === 'verified') return Number(!!b.verified) - Number(!!a.verified) || rep(b) - rep(a)
+    return rep(b) - rep(a) || (b.feedbacks ?? 0) - (a.feedbacks ?? 0)
+  })
+}
+
 // Per-category real agents via 8004scan semantic search — this is what
 // makes the four marketplace categories genuinely deep with relevant BSC
 // agents instead of keyword-matched leftovers.
@@ -367,29 +411,36 @@ const CATEGORY_QUERY: Record<Exclude<LiveCategory, 'other'>, string> = {
   health: 'liquidation protection health factor lending loan collateral monitor guardian',
 }
 
+// Last-good results per category, so a transient empty/500 from the API
+// doesn't wipe a tab that was populated a moment ago.
+const catCache: Partial<Record<Exclude<LiveCategory, 'other'>, OnchainAgent[]>> = {}
+
 export async function fetchScanAgentsByCategory(cat: Exclude<LiveCategory, 'other'>, want = 24): Promise<OnchainAgent[]> {
   const q = encodeURIComponent(CATEGORY_QUERY[cat])
-  const r = await fetch(`/8004/agents/search/semantic?q=${q}&chain_id=56&limit=40`)
-  if (!r.ok) throw new Error(`8004scan ${r.status}`)
-  const j = (await r.json()) as { items?: ScanItem[] }
-  if (!Array.isArray(j.items)) throw new Error('unexpected shape')
-  const mapped = j.items
+  const j = await getJson(`/8004/agents/search/semantic?q=${q}&chain_id=56&limit=40`)
+  if (!j) return catCache[cat] ?? []
+  const mapped = j.items!
     .map(scanToAgent)
     .filter((a): a is OnchainAgent => !!a)
     .map((a) => ({ ...a, category: cat })) // trust the semantic match for the tab
   const seen = new Set<string>()
-  return mapped.filter((a) => (seen.has(a.name.toLowerCase()) ? false : (seen.add(a.name.toLowerCase()), true))).slice(0, want)
+  const unique = mapped
+    .filter((a) => (seen.has(a.name.toLowerCase()) ? false : (seen.add(a.name.toLowerCase()), true)))
+    .slice(0, want)
+  if (unique.length) catCache[cat] = unique
+  return unique.length ? unique : (catCache[cat] ?? [])
 }
 
 export async function fetchScanAgents(offset = 0, limit = 60, want = 24): Promise<OnchainAgent[]> {
   // sort_by=total_score floats the highest-scored (best) BSC agents up;
-  // is_registered=true drops placeholders/defective entries.
-  const r = await fetch(`/8004/agents?chain_id=56&is_registered=true&sort_by=total_score&sort_order=desc&limit=${limit}&offset=${offset}`)
-  if (!r.ok) throw new Error(`8004scan ${r.status}`)
-  const j = (await r.json()) as { items?: ScanItem[] }
-  if (!Array.isArray(j.items)) throw new Error('unexpected shape')
+  // is_registered=true drops placeholders/defective entries. Retried, so a
+  // transient DATABASE_ERROR doesn't immediately kick us to the fallback.
+  const j = await getJson(
+    `/8004/agents?chain_id=56&is_registered=true&sort_by=total_score&sort_order=desc&limit=${limit}&offset=${offset}`,
+  )
+  if (!j) throw new Error('8004scan unavailable')
 
-  const mapped = j.items.map(scanToAgent).filter((a): a is OnchainAgent => !!a)
+  const mapped = j.items!.map(scanToAgent).filter((a): a is OnchainAgent => !!a)
   // dedupe by name — the registry has many same-named clones. The API already
   // returns them ordered by total_score (best first), so we keep that order.
   const seen = new Set<string>()
