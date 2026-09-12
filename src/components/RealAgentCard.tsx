@@ -1,8 +1,9 @@
 import { forwardRef } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, ShieldCheck, BadgeCheck, Star } from 'lucide-react'
+import { ArrowRight, ShieldCheck, BadgeCheck, Star, Check, GitCompare } from 'lucide-react'
 import type { OnchainAgent } from '../lib/onchainAgents'
 import { ReputationRing, Dot } from './primitives'
+import { useLiveCompare } from '../lib/liveCompare'
 
 const LABELS: Record<string, string> = {
   rebalancing: 'Rebalancing',
@@ -12,19 +13,29 @@ const LABELS: Record<string, string> = {
   other: 'General',
 }
 
-const RealAgentCard = forwardRef<HTMLButtonElement, { agent: OnchainAgent; onOpen: (a: OnchainAgent) => void }>(
+const RealAgentCard = forwardRef<HTMLDivElement, { agent: OnchainAgent; onOpen: (a: OnchainAgent) => void }>(
   function RealAgentCard({ agent, onOpen }, ref) {
+    const compare = useLiveCompare()
+    const comparing = compare.has(agent.id)
+    const open = () => onOpen(agent)
     return (
-      <motion.button
+      <motion.div
         ref={ref}
-        layout
-        onClick={() => onOpen(agent)}
+        role="button"
+        tabIndex={0}
+        onClick={open}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            open()
+          }
+        }}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
-        className="card group flex flex-col gap-3.5 rounded-2xl border p-5 text-left"
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-line)' }}
+        className="card group flex cursor-pointer flex-col gap-3.5 rounded-2xl border p-5 text-left"
+        style={{ background: 'var(--color-surface)', borderColor: comparing ? 'var(--color-accent)' : 'var(--color-line)' }}
         aria-label={`${agent.name} — on-chain agent #${agent.id}. Open details.`}
       >
         <div className="flex items-center justify-between">
@@ -51,7 +62,7 @@ const RealAgentCard = forwardRef<HTMLButtonElement, { agent: OnchainAgent; onOpe
               alt=""
               className="h-11 w-11 shrink-0 rounded-full object-cover"
               style={{ border: '1px solid var(--color-line-strong)' }}
-              onError={(e) => ((e.currentTarget.style.display = 'none'))}
+              onError={(e) => (e.currentTarget.style.display = 'none')}
             />
           ) : (
             <ReputationRing value={agent.trustScore} />
@@ -96,11 +107,33 @@ const RealAgentCard = forwardRef<HTMLButtonElement, { agent: OnchainAgent; onOpe
               {agent.source === 'scan' ? 'Unrated · new' : `Trust signal ${agent.trustScore}`}
             </span>
           )}
-          <span className="inline-flex items-center gap-1 font-500 opacity-0 transition-opacity group-hover:opacity-100" style={{ color: 'var(--color-accent)' }}>
-            View <ArrowRight size={13} />
-          </span>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                compare.toggle(agent)
+              }}
+              disabled={!comparing && compare.full}
+              className="pressable inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10.5px] font-500 disabled:cursor-not-allowed disabled:opacity-40"
+              style={{
+                borderColor: comparing ? 'var(--color-accent)' : 'var(--color-line-strong)',
+                color: comparing ? 'var(--color-accent)' : 'var(--color-muted)',
+                background: comparing ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent',
+              }}
+              aria-pressed={comparing}
+              title={comparing ? 'Remove from comparison' : compare.full ? 'Comparing 3 already' : 'Add to comparison'}
+            >
+              {comparing ? <Check size={11} /> : <GitCompare size={11} />}
+              {comparing ? 'Comparing' : 'Compare'}
+            </button>
+            <span className="inline-flex items-center gap-1 font-500 opacity-0 transition-opacity group-hover:opacity-100" style={{ color: 'var(--color-accent)' }}>
+              View <ArrowRight size={13} />
+            </span>
+          </div>
         </div>
-      </motion.button>
+      </motion.div>
     )
   },
 )

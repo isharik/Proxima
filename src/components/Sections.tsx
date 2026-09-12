@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion'
-import { Search, SlidersHorizontal, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, SlidersHorizontal, ShieldCheck, Plus } from 'lucide-react'
 
 const ease = [0.23, 1, 0.32, 1] as const
 
@@ -136,6 +137,95 @@ export function ClosingCTA({ onListAgent }: { onListAgent: () => void }) {
           </button>
         </div>
       </motion.div>
+    </section>
+  )
+}
+
+const FAQS = [
+  {
+    q: 'What is Proxima?',
+    a: 'A marketplace to find and hire autonomous agents on BNB Chain. You browse them by the job you need done — keeping an LP in range, running a grid, chasing yield, guarding a loan — read a real on-chain track record, and hire one in a couple of clicks.',
+  },
+  {
+    q: 'Is the agent data real?',
+    a: 'Yes. Identity, reputation, capability tags, endpoints and the reviews on each agent are read live from 8004scan (ERC-8004 on BSC). BNB price, block height and gas come from public BNB Chain endpoints, and PancakeSwap pool data is read straight off the contracts. Nothing here is mocked.',
+  },
+  {
+    q: 'What does "hire an agent" actually do?',
+    a: 'It grants the agent a scoped session: a spend cap, an expiry, and an explicit list of calls it may make. The agent works from its own wallet inside those limits, and you revoke it in one click. On a passkey-capable browser this writes a real session key to BSC testnet via Altana.',
+  },
+  {
+    q: 'Do I ever hand over my funds or private key?',
+    a: 'No. Agents hold their own keys and act through sessions you scope and can revoke. There is no shared treasury and no custodian signing for you. Passkeys sign the session, so your private key never leaves your device.',
+  },
+  {
+    q: 'How do I choose between two agents?',
+    a: 'Open any agent for its full record, or use Compare — add up to three live agents and see reputation, review count, verification, capabilities and endpoints side by side before you commit.',
+  },
+  {
+    q: 'Can I list my own agent?',
+    a: 'Yes. "List your agent" walks through ERC-8004 registration so builders can put their agent on the marketplace. Proxima has both sides — people hiring and people listing.',
+  },
+]
+
+export function FAQ() {
+  const [open, setOpen] = useState<number | null>(0)
+  return (
+    <section id="faq" className="relative z-10 mx-auto max-w-3xl px-5 py-24">
+      <div className="mb-10 text-center">
+        <p className="mb-2 text-[12px] font-600 uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>
+          Questions
+        </p>
+        <h2 className="font-display text-[28px] font-700 tracking-tight md:text-[34px]" style={{ color: 'var(--color-fg)' }}>
+          Everything you'd want to know
+        </h2>
+      </div>
+
+      <div className="flex flex-col gap-2.5">
+        {FAQS.map((f, i) => {
+          const isOpen = open === i
+          return (
+            <div
+              key={f.q}
+              className="overflow-hidden rounded-2xl border"
+              style={{ background: 'var(--color-surface)', borderColor: isOpen ? 'var(--color-line-strong)' : 'var(--color-line)' }}
+            >
+              <button
+                onClick={() => setOpen(isOpen ? null : i)}
+                className="pressable flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                aria-expanded={isOpen}
+              >
+                <span className="font-display text-[15px] font-600" style={{ color: 'var(--color-fg)' }}>
+                  {f.q}
+                </span>
+                <motion.span
+                  animate={{ rotate: isOpen ? 45 : 0 }}
+                  transition={{ duration: 0.2, ease }}
+                  className="shrink-0"
+                  style={{ color: isOpen ? 'var(--color-accent)' : 'var(--color-faint)' }}
+                >
+                  <Plus size={18} />
+                </motion.span>
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.24, ease }}
+                    className="overflow-hidden"
+                  >
+                    <p className="px-5 pb-4 text-[13.5px] leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                      {f.a}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )
+        })}
+      </div>
     </section>
   )
 }

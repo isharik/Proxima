@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Command, LayoutGrid, Menu, X } from 'lucide-react'
+import { Command, LayoutGrid, Menu, X, Volume2, VolumeX } from 'lucide-react'
 import Logo from './Logo'
 import WalletButton from './WalletButton'
 import { useSessions } from '../lib/sessions'
+import { useMuted, toggleMuted } from '../lib/sound'
 import type { WalletState } from '../lib/wallet'
 
 type WalletApi = WalletState & {
@@ -27,6 +28,7 @@ export default function Navbar({
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const { active } = useSessions()
+  const muted = useMuted()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -40,20 +42,45 @@ export default function Navbar({
       initial={{ opacity: 0, y: -12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-      className="fixed inset-x-0 top-0 z-30 border-b transition-colors duration-300"
+      className="fixed inset-x-0 top-0 z-30 border-b transition-[background,border-color,box-shadow] duration-300"
       style={{
-        borderColor: scrolled ? 'var(--color-line)' : 'transparent',
-        background: scrolled ? 'color-mix(in srgb, var(--color-bg) 72%, transparent)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(12px)' : 'none',
+        borderColor: scrolled ? 'var(--color-line-strong)' : 'color-mix(in srgb, var(--color-fg) 7%, transparent)',
+        background: scrolled
+          ? 'color-mix(in srgb, var(--color-bg) 60%, transparent)'
+          : 'color-mix(in srgb, var(--color-bg) 30%, transparent)',
+        backdropFilter: 'blur(16px) saturate(1.7)',
+        WebkitBackdropFilter: 'blur(16px) saturate(1.7)',
+        boxShadow: scrolled
+          ? '0 10px 34px -14px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)'
+          : 'inset 0 1px 0 rgba(255,255,255,0.04)',
       }}
     >
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3.5">
         <Logo />
 
-        <nav className="hidden items-center gap-7 text-[13.5px] lg:flex" style={{ color: 'var(--color-muted)' }}>
-          <a href="#browse" className="transition-colors hover:text-[var(--color-fg)]">Browse</a>
-          <a href="#how" className="transition-colors hover:text-[var(--color-fg)]">How it works</a>
-          <a href="#trust" className="transition-colors hover:text-[var(--color-fg)]">Safety</a>
+        <nav
+          className="hidden items-center gap-1 rounded-full border px-1.5 py-1 text-[13px] lg:flex"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--color-fg) 8%, transparent)',
+            background: 'color-mix(in srgb, var(--color-surface) 40%, transparent)',
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05)',
+          }}
+        >
+          {[
+            { href: '#browse', label: 'Browse agents' },
+            { href: '#how', label: 'How it works' },
+            { href: '#faq', label: 'FAQ' },
+            { href: '#trust', label: 'Safety' },
+          ].map((l) => (
+            <a
+              key={l.href}
+              href={l.href}
+              className="pressable rounded-full px-3 py-1.5 transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-fg)]"
+              style={{ color: 'var(--color-muted)' }}
+            >
+              {l.label}
+            </a>
+          ))}
         </nav>
 
         <div className="flex items-center gap-2">
@@ -67,6 +94,16 @@ export default function Navbar({
             <span className="inline-flex items-center gap-0.5 font-mono text-[11px]" style={{ color: 'var(--color-faint)' }}>
               <Command size={11} /> K
             </span>
+          </button>
+
+          <button
+            onClick={toggleMuted}
+            className="pressable hidden h-9 w-9 place-items-center rounded-lg border sm:grid"
+            style={{ borderColor: 'var(--color-line-strong)', color: 'var(--color-muted)' }}
+            aria-label={muted ? 'Turn interface sounds on' : 'Turn interface sounds off'}
+            title={muted ? 'Sounds off' : 'Sounds on'}
+          >
+            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
 
           <button
@@ -118,8 +155,9 @@ export default function Navbar({
           >
             <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-5 py-3 text-[14px]" style={{ color: 'var(--color-muted)' }}>
               {[
-                { href: '#browse', label: 'Browse' },
+                { href: '#browse', label: 'Browse agents' },
                 { href: '#how', label: 'How it works' },
+                { href: '#faq', label: 'FAQ' },
                 { href: '#trust', label: 'Safety' },
               ].map((l) => (
                 <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className="rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-fg)]">

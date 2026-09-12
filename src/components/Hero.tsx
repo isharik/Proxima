@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Search, Command } from 'lucide-react'
 import NetworkBar from './NetworkBar'
+import HeroCoin from './HeroCoin'
 
 const ease = [0.23, 1, 0.32, 1] as const
 
@@ -65,11 +66,20 @@ export default function Hero({
     reduced || focused || !typed ? STATIC_PLACEHOLDER : `Search — ${typed}▏`
 
   return (
-    <section className="relative z-10 mx-auto max-w-3xl px-5 pb-14 pt-40 text-center md:pt-52">
+    <section className="relative z-10 mx-auto flex min-h-[100svh] max-w-3xl flex-col items-center justify-center px-5 pb-20 pt-28 text-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.6, ease }}
+        className="mb-7"
+      >
+        <HeroCoin />
+      </motion.div>
+
       <motion.h1
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.55, ease }}
+        transition={{ duration: 0.55, ease, delay: 0.06 }}
         className="font-display text-[42px] font-700 leading-[1.02] tracking-tight md:text-[62px]"
         style={{ color: 'var(--color-fg)' }}
       >

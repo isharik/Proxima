@@ -237,7 +237,7 @@ function scanToAgent(a: ScanItem): OnchainAgent | null {
     image: a.image_url && /^https?:/.test(a.image_url) ? a.image_url : undefined,
     category: classify(name, description),
     trustScore,
-    explorer: `https://8004scan.io/agents/56/${id}`,
+    explorer: `https://8004scan.io/agents/bsc/${id}`,
     source: 'scan',
     verified,
     avatar: a.image_url && /^https?:/.test(a.image_url) ? a.image_url : undefined,
@@ -367,9 +367,13 @@ async function getJson(url: string, tries = 3): Promise<{ items?: ScanItem[] } |
       if (r.ok) {
         const j = (await r.json()) as { success?: boolean; items?: ScanItem[] }
         if (j && j.success !== false && Array.isArray(j.items)) return j
+      } else if (r.status >= 400 && r.status < 500) {
+        // Client error (bad query, rate-limit) — retrying won't help and
+        // just adds console noise, so bail to the caller's fallback now.
+        return null
       }
     } catch {
-      /* retry */
+      /* network error — retry */
     }
     if (i < tries - 1) await new Promise((res) => setTimeout(res, 350 * (i + 1)))
   }
@@ -453,7 +457,7 @@ export async function fetchScanAgents(offset = 0, limit = 60, want = 24): Promis
   return unique.slice(0, want)
 }
 
-export function useOnchainAgents(want = 24) {
+export function useOnchainAgents(want = 48) {
   const [agents, setAgents] = useState<OnchainAgent[]>([])
   const [status, setStatus] = useState<'loading' | 'live' | 'error'>('loading')
   const [srcMode, setSrcMode] = useState<'scan' | 'chain'>('scan')
@@ -464,27 +468,27 @@ export function useOnchainAgents(want = 24) {
     let alive = true
     // Prefer the 8004scan API (real reputation); fall back to reading the
     // registry contract directly if the proxy/API is unavailable.
-    fetchScanAgents(0, 60, want)
+    fetchScanAgents(0, 120, want)
       .then((a) => {
         if (!alive) return
         if (a.length) {
           setAgents(a)
           setStatus('live')
           setSrcMode('scan')
-          setCursor(60)
+          setCursor(120)
           return
         }
         throw new Error('empty')
       })
       .catch(async () => {
         try {
-          const a = await fetchOnchainAgents(0, 80, want)
+          const a = await fetchOnchainAgents(0, 140, want)
           if (!alive) return
           if (a.length) {
             setAgents(a)
             setStatus('live')
             setSrcMode('chain')
-            setCursor(80)
+            setCursor(140)
           } else setStatus('error')
         } catch {
           if (alive) setStatus('error')
@@ -498,13 +502,13 @@ export function useOnchainAgents(want = 24) {
   const loadMore = useCallback(async () => {
     setLoadingMore(true)
     try {
-      const more = srcMode === 'scan' ? await fetchScanAgents(cursor, 60, 24) : await fetchOnchainAgents(cursor, 80, 24)
+      const more = srcMode === 'scan' ? await fetchScanAgents(cursor, 120, 48) : await fetchOnchainAgents(cursor, 140, 48)
       setAgents((prev) => {
         const seenIds = new Set(prev.map((a) => `${a.source ?? 'chain'}-${a.id}`))
         const seenNames = new Set(prev.map((a) => a.name.toLowerCase()))
         return [...prev, ...more.filter((a) => !seenIds.has(`${a.source ?? 'chain'}-${a.id}`) && !seenNames.has(a.name.toLowerCase()))]
       })
-      setCursor((c) => c + (srcMode === 'scan' ? 60 : 80))
+      setCursor((c) => c + (srcMode === 'scan' ? 120 : 140))
     } finally {
       setLoadingMore(false)
     }

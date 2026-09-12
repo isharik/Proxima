@@ -62,6 +62,33 @@ export default function KineticGrid() {
   const rafRef = useRef<number>(0)
   const sizeRef = useRef<{ w: number; h: number; dpr: number }>({ w: 0, h: 0, dpr: 1 })
   const reduceRef = useRef(false)
+  const bgRef = useRef<HTMLCanvasElement | null>(null)
+
+  // Bake the static background (base wash + dot texture) once per resize.
+  const buildBg = useCallback((w: number, h: number, dpr: number) => {
+    const off = document.createElement('canvas')
+    off.width = Math.floor(w * dpr)
+    off.height = Math.floor(h * dpr)
+    const c = off.getContext('2d')
+    if (!c) return
+    c.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const base = c.createLinearGradient(0, 0, w, h)
+    base.addColorStop(0, '#0b1524')
+    base.addColorStop(0.42, BG)
+    base.addColorStop(0.6, BG)
+    base.addColorStop(1, '#180f06')
+    c.fillStyle = base
+    c.fillRect(0, 0, w, h)
+    c.fillStyle = 'rgba(154,163,178,0.05)'
+    for (let x = DOT_SPACING / 2; x < w; x += DOT_SPACING) {
+      for (let y = DOT_SPACING / 2; y < h; y += DOT_SPACING) {
+        c.beginPath()
+        c.arc(x, y, 0.7, 0, Math.PI * 2)
+        c.fill()
+      }
+    }
+    bgRef.current = off
+  }, [])
 
   const getWarpedPoint = useCallback(
     (
@@ -141,39 +168,36 @@ export default function KineticGrid() {
       const ambientAmp = reduced ? 3.5 : 8
       const warpScale = reduced ? 0.4 : 1
 
-      ctx.clearRect(0, 0, W, H)
-      // Base wash: a cool blue drifting into a warm amber-orange across the
-      // diagonal, kept dark so content stays readable. This is the colour
-      // that sits *behind* the mesh.
-      const base = ctx.createLinearGradient(0, 0, W, H)
-      base.addColorStop(0, '#0b1524') // cool blue-black, top-left
-      base.addColorStop(0.42, BG)
-      base.addColorStop(0.6, BG)
-      base.addColorStop(1, '#180f06') // warm orange-black, bottom-right
-      ctx.fillStyle = base
-      ctx.fillRect(0, 0, W, H)
-      // Soft corner glows for depth — blue up top, amber down low.
-      const blue = ctx.createRadialGradient(W * 0.16, H * 0.08, 0, W * 0.16, H * 0.08, Math.max(W, H) * 0.55)
-      blue.addColorStop(0, 'rgba(52,110,210,0.10)')
-      blue.addColorStop(1, 'rgba(52,110,210,0)')
+      // Static base layer (diagonal blue→amber wash + dot texture) is baked
+      // once per resize into an offscreen canvas and blitted here — far
+      // cheaper than rebuilding a gradient and looping every dot each frame.
+      const bg = bgRef.current
+      if (bg) ctx.drawImage(bg, 0, 0, W, H)
+      else {
+        ctx.fillStyle = BG
+        ctx.fillRect(0, 0, W, H)
+      }
+      // Soft corner glows that slowly drift and breathe, so the wash feels
+      // alive rather than painted-on. Under reduced-motion they hold still.
+      const drift = reduced ? 0 : 1
+      const tt = now * 0.0001
+      const R = Math.max(W, H)
+      const bx = W * (0.17 + 0.07 * Math.sin(tt * 1.3) * drift)
+      const by = H * (0.1 + 0.06 * Math.cos(tt * 1.05) * drift)
+      const ba = 0.11 + 0.035 * Math.sin(tt * 1.7) * drift
+      const blue = ctx.createRadialGradient(bx, by, 0, bx, by, R * 0.6)
+      blue.addColorStop(0, `rgba(56,116,214,${ba.toFixed(3)})`)
+      blue.addColorStop(1, 'rgba(56,116,214,0)')
       ctx.fillStyle = blue
       ctx.fillRect(0, 0, W, H)
-      const amber = ctx.createRadialGradient(W * 0.84, H * 0.96, 0, W * 0.84, H * 0.96, Math.max(W, H) * 0.6)
-      amber.addColorStop(0, 'rgba(245,179,1,0.09)')
+      const ax = W * (0.83 + 0.07 * Math.cos(tt * 1.0) * drift)
+      const ay = H * (0.9 + 0.06 * Math.sin(tt * 1.35) * drift)
+      const aa = 0.1 + 0.035 * Math.cos(tt * 1.2) * drift
+      const amber = ctx.createRadialGradient(ax, ay, 0, ax, ay, R * 0.62)
+      amber.addColorStop(0, `rgba(245,179,1,${aa.toFixed(3)})`)
       amber.addColorStop(1, 'rgba(245,179,1,0)')
       ctx.fillStyle = amber
       ctx.fillRect(0, 0, W, H)
-
-      // static dot texture with a faint travelling shimmer
-      for (let x = DOT_SPACING / 2; x < W; x += DOT_SPACING) {
-        for (let y = DOT_SPACING / 2; y < H; y += DOT_SPACING) {
-          const tw = 0.04 + 0.03 * (0.5 + 0.5 * Math.sin(now * 0.0012 + x * 0.05 + y * 0.05))
-          ctx.fillStyle = `rgba(154,163,178,${tw.toFixed(3)})`
-          ctx.beginPath()
-          ctx.arc(x, y, 0.7, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      }
 
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i]
@@ -296,6 +320,7 @@ export default function KineticGrid() {
       canvas.style.height = h + 'px'
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       sizeRef.current = { w, h, dpr }
+      buildBg(w, h, dpr)
     }
     setSize()
     window.addEventListener('resize', setSize)

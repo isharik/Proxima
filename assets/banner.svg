@@ -20,17 +20,15 @@
   <rect width="1200" height="380" rx="20" fill="url(#grid)"/>
   <ellipse cx="235" cy="150" rx="230" ry="180" fill="url(#glow)"/>
 
-  <!-- Proxima mark -->
-  <g transform="translate(150,86)">
-    <g transform="scale(1.6)" stroke="#f5b301" stroke-width="15" stroke-linecap="round" fill="none" filter="url(#soft)" opacity="0.55">
-      <path d="M47 67 C 31 61 27 41 41 29 C 57 17 85 21 91 43 C 95 61 79 73 63 67"/>
-      <path d="M45 64 L 36 99"/>
+  <!-- Proxima mark — crisp p (stem + bowl + dot) -->
+  <g transform="translate(158,58) scale(1.55)">
+    <g filter="url(#soft)" opacity="0.5">
+      <rect x="30" y="28" width="15" height="76" rx="7.5" fill="#f5b301"/>
+      <circle cx="66" cy="54" r="25.5" fill="none" stroke="#f5b301" stroke-width="15"/>
     </g>
-    <g transform="scale(1.6)" stroke="#f5b301" stroke-width="15" stroke-linecap="round" fill="none">
-      <path d="M47 67 C 31 61 27 41 41 29 C 57 17 85 21 91 43 C 95 61 79 73 63 67"/>
-      <path d="M45 64 L 36 99"/>
-    </g>
-    <circle cx="94" cy="75" r="14" fill="#f5b301"/>
+    <rect x="30" y="28" width="15" height="76" rx="7.5" fill="#f5b301"/>
+    <circle cx="66" cy="54" r="25.5" fill="none" stroke="#f5b301" stroke-width="15"/>
+    <circle cx="66" cy="54" r="7" fill="#f5b301"/>
   </g>
 
   <!-- Wordmark -->

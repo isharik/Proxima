@@ -23,10 +23,13 @@ import {
   type LiveCategory,
   type LiveSort,
 } from './lib/onchainAgents'
-import { HowItWorks, ClosingCTA, Footer } from './components/Sections'
+import { HowItWorks, FAQ, ClosingCTA, Footer } from './components/Sections'
+import LiveCompareBar from './components/LiveCompareBar'
 import { CATEGORIES, type Agent, type Category } from './data/agents'
 import { useAgents } from './lib/agentsSource'
 import { useWallet } from './lib/wallet'
+import { installClickSound } from './lib/sound'
+import { LiveCompareProvider } from './lib/liveCompare'
 
 type Filter = 'all' | Category
 type Sort = 'reputation' | 'hires' | 'price' | 'reviews' | 'verified'
@@ -46,6 +49,24 @@ const LIVE_SORTS: { id: Sort; label: string }[] = [
 ]
 
 const ease = [0.23, 1, 0.32, 1] as const
+
+// Lightweight in-app intelligence: read intent out of a natural query like
+// "suggest me rebalancing agents" or "safest yield agent, most reviewed"
+// and map it to a category + sort. No model call — just the vocabulary of
+// the four categories and the three sort dimensions.
+function interpret(q: string): { category?: Category; sort?: Sort } {
+  const s = q.toLowerCase()
+  let category: Category | undefined
+  if (/\b(rebalanc|lp|range|concentrated|clmm|liquidity position)\b/.test(s)) category = 'rebalancing'
+  else if (/\b(grid|market.?mak|scalp|chop|sideways|range trad)\b/.test(s)) category = 'grid'
+  else if (/\b(yield|apr|apy|farm|stak|vault|compound|lend|deposit|earn)\b/.test(s)) category = 'yield'
+  else if (/\b(liquidat|health.?factor|collateral|loan|borrow|guard|debt|protect)\b/.test(s)) category = 'health'
+  let sort: Sort | undefined
+  if (/\b(most.?review|popular|most.?used|most.?hired|active)\b/.test(s)) sort = 'reviews'
+  else if (/\b(verified|trusted|legit|certified)\b/.test(s)) sort = 'verified'
+  else if (/\b(best|top|highest|reputation|safest|reliable)\b/.test(s)) sort = 'reputation'
+  return { category, sort }
+}
 
 // Capture the launch hash at module load — before React mounts or any
 // in-app anchor scroll can rewrite it — so shared deep links survive.
@@ -82,6 +103,9 @@ export default function App() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // soft Apple-style click feedback on any interactive control
+  useEffect(() => installClickSound(), [])
 
   // deep-linking: capture the boot hash once, apply it after agents
   // load, then keep the URL in sync (writer stays off until hydrated so
@@ -189,9 +213,26 @@ export default function App() {
     browseRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  // Search that understands intent: a phrase like "suggest rebalancing
+  // agents" jumps to that live category (and sort) instead of a raw text
+  // match; anything else falls through to the text filter.
+  function handleSearch() {
+    const { category, sort: si } = interpret(query)
+    if (category) {
+      setDataMode('live')
+      setFilter(category)
+      if (si) setSort(si)
+      setQuery('')
+    } else if (si) {
+      setSort(si)
+    }
+    scrollToBrowse()
+  }
+
   const loading = status === 'loading'
 
   return (
+    <LiveCompareProvider>
     <div id="top" className="relative min-h-[100dvh]">
       <KineticGrid />
       <Navbar
@@ -205,7 +246,7 @@ export default function App() {
         <Hero
           query={query}
           setQuery={setQuery}
-          onSearchEnter={scrollToBrowse}
+          onSearchEnter={handleSearch}
           onOpenPalette={() => setPaletteOpen(true)}
         />
 
@@ -333,13 +374,11 @@ export default function App() {
               </div>
             ) : filteredReal.length > 0 ? (
               <>
-                <motion.div layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  <AnimatePresence mode="popLayout">
-                    {filteredReal.map((a) => (
-                      <RealAgentCard key={a.id} agent={a} onOpen={setActiveReal} />
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredReal.map((a) => (
+                    <RealAgentCard key={a.id} agent={a} onOpen={setActiveReal} />
+                  ))}
+                </div>
                 {filter === 'all' && !query && (
                   <div className="mt-6 flex justify-center">
                     <button
@@ -406,6 +445,7 @@ export default function App() {
         </section>
 
         <HowItWorks />
+        <FAQ />
         <ClosingCTA onListAgent={() => setListOpen(true)} />
         <Footer />
       </main>
@@ -425,7 +465,9 @@ export default function App() {
       />
       <ListAgentModal open={listOpen} onClose={() => setListOpen(false)} />
       <CompareTray onHire={(a) => setActive(a)} />
+      <LiveCompareBar onOpen={setActiveReal} />
     </div>
+    </LiveCompareProvider>
   )
 }
 
